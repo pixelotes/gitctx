@@ -1,0 +1,195 @@
+# gitctx — Git Profile Manager
+
+**gitctx** is a lightweight CLI tool to manage multiple Git profiles and configurations across projects and machines. It lets you create and switch between named profiles, each with its own `.gitconfig` and tracked dotfiles, all versioned in a Git-backed repository stored under `~/.config/gitctx`.
+
+Inspired by tools like [`chezmoi`](https://www.chezmoi.io/) and `git`'s own flexible config system, `gitctx` is ideal for developers with multiple identities (e.g., work/personal), different Git settings, or multiple machines.
+
+---
+
+## Features
+
+* Store and manage multiple named Git profiles
+* Keep each profile's `.gitconfig` and tracked dotfiles versioned
+* Easily switch between profiles (work, personal, etc.)
+* Add and remove files to/from profiles
+* Safe: profiles are never auto-applied unless explicitly invoked
+* Clone and sync your profile repo from Git remotes
+* Optional interactive selection via `fzf`
+* Simple and transparent — uses Git under the hood
+
+---
+
+## Installation
+
+1. **Clone the repo** or download `gitctx.py`:
+
+```bash
+git clone https://github.com/pixelotes/gitctx.git
+cd gitctx
+chmod +x gitctx.py
+```
+
+2. **(Optional)** Install `fzf` for enhanced interactive selection:
+
+```bash
+sudo apt install fzf  # Or use your package manager
+```
+
+3. **(Optional)** Move it to your PATH:
+
+```bash
+sudo mv gitctx.py /usr/local/bin/gitctx
+```
+
+---
+
+## Getting Started
+
+### 1. Initialize
+
+Start a new local config repo or clone an existing one:
+
+```bash
+# Start from scratch
+gitctx init
+
+# OR clone your existing config repo
+gitctx init git@github.com:youruser/gitctx-config.git
+```
+
+> Note: If you clone a remote repo, any existing `active_profile` will be unset to prevent overwriting local files.
+
+---
+
+## Example Workflow
+
+### 2. Create Your First Profile from Current Git Config
+
+```bash
+gitctx add-current personal
+```
+
+This copies your current `~/.gitconfig` into the `personal` profile and stores your name/email.
+
+You will be prompted to set it as the active profile.
+
+---
+
+### 3. Add Dotfiles to the Profile
+
+```bash
+gitctx add ~/.gitignore_global
+gitctx add ~/.ssh/config
+```
+
+These files will be copied and versioned inside the profile. Paths must be inside your home directory for portability.
+
+---
+
+### 4. Create a New Empty Profile
+
+```bash
+gitctx add-new work --user-name "Jane Dev" --user-email jane@company.com
+```
+
+This creates a clean Git config using the provided identity.
+
+---
+
+### 5. List Profiles
+
+```bash
+gitctx list
+```
+
+Shows all profiles, their status, creation time, and tracked files.
+
+---
+
+### 6. Switch Between Profiles
+
+```bash
+gitctx switch work
+```
+
+This applies the files in the `work` profile to your home directory and marks it as active.
+
+To re-apply the current profile without switching:
+
+```bash
+gitctx apply
+```
+
+---
+
+### 7. Edit or Remove Files
+
+```bash
+gitctx edit-file               # Interactive selection
+gitctx edit-file gitconfig     # Edit directly
+
+gitctx rm                      # Remove file interactively
+gitctx rm gitignore_global     # Remove specific file
+```
+
+---
+
+### 8. Sync with Remote
+
+Push or pull your config repo changes:
+
+```bash
+gitctx push
+gitctx pull
+```
+
+You can also inspect profile files:
+
+```bash
+gitctx inspect personal
+```
+
+---
+
+## Commands Overview
+
+| Command           | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `init`            | Initialize or clone a config repository                 |
+| `add-current`     | Create profile from your current Git config             |
+| `add-new`         | Create a new profile with provided name/email           |
+| `add`             | Add a file to a profile (uses active if none specified) |
+| `rm`              | Remove a file from a profile                            |
+| `edit-file`       | Edit a tracked file in a profile                        |
+| `remove`          | Delete an entire profile                                |
+| `list` / `status` | Show all profiles and their info                        |
+| `switch`          | Apply a profile and set it active                       |
+| `apply`           | Re-apply the current active profile                     |
+| `inspect`         | List all files in a given profile                       |
+| `push` / `pull`   | Push/pull config repo changes                           |
+
+---
+
+## Safety First
+
+* `gitctx` **never auto-applies** a profile when cloning.
+* It will **not overwrite** your home files unless you explicitly run `switch` or `apply`.
+* All profile data lives under `~/.config/gitctx`.
+
+---
+
+## Contributing
+
+Pull requests are welcome! For major changes, open an issue first to discuss ideas.
+
+---
+
+## License
+
+[MIT](./LICENSE)
+
+---
+
+## Inspiration
+
+Inspired by [`chezmoi`](https://www.chezmoi.io/) — a tool for dotfile management. `gitctx` takes the same idea and focuses it specifically on Git profile and identity management.
