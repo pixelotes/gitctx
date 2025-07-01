@@ -12,7 +12,6 @@ import subprocess
 import argparse
 from pathlib import Path
 from typing import Dict, List, Optional
-import tempfile
 
 class GitCtx:
     def __init__(self):
@@ -666,62 +665,83 @@ def main():
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
     
     # Initialize command
-    init_parser = subparsers.add_parser('init', help='Initialize gitctx repository')
+    init_parser = subparsers.add_parser('init', help='Initialize gitctx repository (alias)')
     init_parser.add_argument('repo_url', nargs='?', help='Optional repository URL to clone')
     
+    # Switch profile
+    switch_parser = subparsers.add_parser('switch', help='Switch to a profile (alias)')
+    switch_parser.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
+
+    # Status
+    status_parser = subparsers.add_parser('status', help='List all profiles (alias)')
+
+    # Profile management commands
+    profile_parser = subparsers.add_parser('profile', help='Grouped profile management commands')
+    profile_subparsers = profile_parser.add_subparsers(dest='profile_command', help='Profile commands')
+    
     # Add new profile
-    add_new = subparsers.add_parser('add-new', help='Create new git profile')
+    add_new = profile_subparsers.add_parser('add-new', help='Create new git profile')
     add_new.add_argument('name', help='Profile name')
     add_new.add_argument('--user-name', required=True, help='Git user name')
     add_new.add_argument('--user-email', required=True, help='Git user email')
     
     # Add current profile
-    add_current = subparsers.add_parser('add-current', help='Add current git configuration as a profile')
+    add_current = profile_subparsers.add_parser('add-current', help='Add current git configuration as a profile')
     add_current.add_argument('name', help='Profile name')
 
-    # Apply profile configuration
-    subparsers.add_parser('apply', help='Re-apply files from the current active profile')
+    # List profiles
+    profile_subparsers.add_parser('list', help='List all profiles')
+
+    
+    # Switch profile
+    switch = profile_subparsers.add_parser('switch', help='Switch to a profile')
+    switch.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
+    
+    # List profile files
+    inspect = profile_subparsers.add_parser('inspect', help='List all files in a profile')
+    inspect.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
+    
+    # Edit profile
+    edit = profile_subparsers.add_parser('edit', help='Edit a profile')
+    edit.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
+    
+    # Remove profile
+    remove = profile_subparsers.add_parser('rm', help='Remove git profile')
+    remove.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
+    
+    # File management commands
+    file_parser = subparsers.add_parser('file', help='Grouped file management commands')
+    file_subparsers = file_parser.add_subparsers(dest='file_command', help='File commands')
     
     # Add file to profile
-    add_file = subparsers.add_parser('add', help='Add a file to a profile')
+    add_file = file_subparsers.add_parser('add', help='Add a file to a profile')
     add_file.add_argument('file', help='Path to file to add')
     add_file.add_argument('--profile', help='Profile name (defaults to active profile)')
 
     # Edit file in profile
-    edit_file = subparsers.add_parser('edit-file', help='Edit a file in a profile')
+    edit_file = file_subparsers.add_parser('edit', help='Edit a file in a profile')
     edit_file.add_argument('file', nargs='?', help='File name to edit (optional, fzf prompt if omitted)')
     edit_file.add_argument('--profile', help='Profile name (defaults to active profile)')
 
     # Remove file from profile
-    rm = subparsers.add_parser('rm', help='Remove file from profile')
-    rm.add_argument('file', nargs='?', help='File name to remove (optional, fzf prompt if omitted)')
-    rm.add_argument('--profile', help='Profile name (defaults to active profile)')
+    rm_file = file_subparsers.add_parser('rm', help='Remove file from profile')
+    rm_file.add_argument('file', nargs='?', help='File name to remove (optional, fzf prompt if omitted)')
+    rm_file.add_argument('--profile', help='Profile name (defaults to active profile)')
 
-    # Remove profile
-    remove = subparsers.add_parser('remove', help='Remove git profile')
-    remove.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
+    # Config/git repository commands
+    config_parser = subparsers.add_parser('config', help='Grouped cn¡onfiguration management commands')
+    config_subparsers = config_parser.add_subparsers(dest='config_command', help='Config commands')
     
-    # List profiles
-    subparsers.add_parser('list', help='List all profiles')
+    # Init config
+    init_config = config_subparsers.add_parser('init', help='Initialize gitctx repository')
+    init_config.add_argument('repo_url', nargs='?', help='Optional repository URL to clone')
 
-    # Status
-    subparsers.add_parser('status', help='List all profiles - Alias for "list"')
-    
-    # Switch profile
-    switch = subparsers.add_parser('switch', help='Switch to a profile')
-    switch.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
-    
-    # Edit profile
-    edit = subparsers.add_parser('edit', help='Edit a profile')
-    edit.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
-    
-    # List profile files
-    inspect = subparsers.add_parser('inspect', help='List all files in a profile')
-    inspect.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
-    
     # Push and pull from git
-    subparsers.add_parser('push', help='Push changes in gitctx repository')
-    subparsers.add_parser('pull', help='Pull latest changes in gitctx repository')
+    config_subparsers.add_parser('push', help='Push changes in gitctx repository')
+    config_subparsers.add_parser('pull', help='Pull latest changes in gitctx repository')
+    
+    # Apply profile configuration
+    config_subparsers.add_parser('apply', help='Re-apply files from the current active profile')
     
     args = parser.parse_args()
     
@@ -734,34 +754,50 @@ def main():
     try:
         if args.command == 'init':
             gitctx.initialize_repo(getattr(args, 'repo_url', None))
-        elif args.command == 'add-new':
-            gitctx.add_new_profile(args.name, args.user_name, args.user_email)
-        elif args.command == 'add-current':
-            gitctx.add_current_profile(args.name)
-        elif args.command == 'remove':
-            gitctx.remove_profile(args.name)
-        elif args.command == 'list':
-            gitctx.list_profiles()
+        elif args.command == 'profile':
+            if not args.profile_command:
+                profile_parser.print_help()
+                return
+            if args.profile_command == 'add-new':
+                gitctx.add_new_profile(args.name, args.user_name, args.user_email)
+            elif args.profile_command == 'add-current':
+                gitctx.add_current_profile(args.name)
+            elif args.profile_command == 'edit':
+                gitctx.edit_profile(args.name)
+            elif args.profile_command == 'rm':
+                gitctx.remove_profile(args.name)
+            elif args.profile_command == 'list':
+                gitctx.list_profiles()
+            elif args.profile_command == 'inspect':
+                gitctx.list_profile_files(args.name)
+            elif args.profile_command == 'switch':
+                gitctx.switch_profile(args.name)
         elif args.command == 'status':
             gitctx.list_profiles()
         elif args.command == 'switch':
             gitctx.switch_profile(args.name)
-        elif args.command == 'edit':
-            gitctx.edit_profile(args.name)
-        elif args.command == 'inspect':
-            gitctx.list_profile_files(args.name)
-        elif args.command == 'add':
-            gitctx.add_file(args.file, args.profile)
-        elif args.command == 'edit-file':
-            gitctx.edit_file(args.file, args.profile)
-        elif args.command == 'rm':
-            gitctx.remove_file(args.file, args.profile)
-        elif args.command == 'push':
-            gitctx.push_repo()
-        elif args.command == 'pull':
-            gitctx.pull_repo()
-        elif args.command == 'apply':
-            gitctx.apply_active_profile()
+        elif args.command == 'file':
+            if not args.file_command:
+                file_parser.print_help()
+                return
+            if args.file_command == 'add':
+                gitctx.add_file(args.file, args.profile)
+            elif args.file_command == 'edit':
+                gitctx.edit_file(args.file, args.profile)
+            elif args.file_command == 'rm':
+                gitctx.remove_file(args.file, args.profile)
+        elif args.command == 'config':
+            if not args.config_command:
+                config_parser.print_help()
+                return
+            if args.config_command == 'init':
+                gitctx.initialize_repo(getattr(args, 'repo_url', None))
+            if args.config_command == 'push':
+                gitctx.push_repo()
+            elif args.config_command == 'pull':
+                gitctx.pull_repo()
+            elif args.config_command == 'apply':
+                gitctx.apply_active_profile()
     except KeyboardInterrupt:
         print("\n❌ Operation cancelled")
         sys.exit(1)
