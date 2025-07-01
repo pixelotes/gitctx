@@ -154,11 +154,11 @@ gitctx profile inspect personal
 ## Commands Overview
 
 ### Quick commands
-| Command           | Description                                                     |
-| ----------------- | --------------------------------------------------------------- |
-| `init [repo_url]` | Initialize or clone a config repository (alias for config init) |
-| `status`          | Lists all profile and their status (alias for profile list)     |
-| `switch`          | Apply a profile and set it active (alias for profile switch)    |
+| Command             | Description                                                     |
+| ------------------- | --------------------------------------------------------------- |
+| `init [repo_url]`   | Initialize or clone a config repository (alias for config init) |
+| `switch [profile]`  | Apply a profile and set it active (alias for profile switch)    |
+| `status`            | Lists all profile and their status (alias for profile list)     |
 
 ### Profile Management
 | Command                  | Description                                              |
@@ -168,6 +168,7 @@ gitctx profile inspect personal
 | `profile edit`            | Delete an entire profile                                |
 | `profile list`            | Show all profiles and their info                        |
 | `profile remove`          | Delete an entire profile                                |
+| `profile switch`          | Apply a profile and set it active                       |
 | `profile inspect`         | List all files in a given profile                       |
 
 ### File Management
