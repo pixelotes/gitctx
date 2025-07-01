@@ -153,15 +153,16 @@ gitctx profile inspect personal
 
 ## Commands Overview
 
-| Command           | Description                                             |
-| ----------------- | ------------------------------------------------------- |
-| `init [repo_url]` | Initialize or clone a config repository (alias for config init                |
-| `status`          | Lists all profile and their status (alias for profile list) |
-| `switch`          | Apply a profile and set it active (alias for profile switch)                       |
+### Quick commands
+| Command           | Description                                                     |
+| ----------------- | --------------------------------------------------------------- |
+| `init [repo_url]` | Initialize or clone a config repository (alias for config init) |
+| `status`          | Lists all profile and their status (alias for profile list)     |
+| `switch`          | Apply a profile and set it active (alias for profile switch)    |
 
 ### Profile Management
-| Command           | Description                                             |
-| ----------------- | ------------------------------------------------------- |
+| Command                  | Description                                              |
+| ------------------------- | ------------------------------------------------------- |
 | `profile add-current`     | Create profile from your current Git config             |
 | `profile add-new`         | Create a new profile with provided name/email           |
 | `profile edit`            | Delete an entire profile                                |
@@ -170,20 +171,19 @@ gitctx profile inspect personal
 | `profile inspect`         | List all files in a given profile                       |
 
 ### File Management
-| Command           | Description                                             |
-| ----------------- | ------------------------------------------------------- |
-| `file add`             | Add a file to a profile (uses active if none specified) |
-| `file edit`       | Edit a tracked file in a profile                        |
-| `file rm`              | Remove a file from a profile                            |
+| Command           | Description                                                  |
+| ----------------- | ------------------------------------------------------------ |
+| `file add`        | Add a file to a profile (uses active if none specified)      |
+| `file edit`       | Edit a tracked file in a profile                             |
+| `file rm`         | Remove a file from a profile                                 |
 
 ### Configuration Management
-| Command           | Description                                             |
-| ----------------- | ------------------------------------------------------- |
-| `config init [repo_url]` | Initialize or clone a config repository                 |
-| `config push`   | Push config repo changes                           |
-
-| `config pull`   | Pull config repo changes                           |
-| `config apply`           | Re-apply the current active profile                     |
+| Command                  | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| `config init [repo_url]` | Initialize or clone a config repository          |
+| `config push`            | Push config repo changes                         |
+| `config pull`            | Pull config repo changes                         |
+| `config apply`           | Re-apply the current active profile              |
 
 ---
 
