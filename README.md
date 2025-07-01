@@ -15,7 +15,7 @@ Inspired by tools like [`chezmoi`](https://www.chezmoi.io/) and `git`'s own flex
 * Safe: profiles are never auto-applied unless explicitly invoked
 * Clone and sync your profile repo from Git remotes
 * Optional interactive selection via `fzf`
-* Simple and transparent — uses Git under the hood
+* Simple and transparent: uses Git under the hood
 
 ---
 
