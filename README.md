@@ -35,10 +35,10 @@ chmod +x gitctx.py
 sudo apt install fzf  # Or use your package manager
 ```
 
-3. **(Optional)** Move it to your PATH:
+3. **(Optional)** Create an alias in your .bashrc:
 
 ```bash
-sudo mv gitctx.py /usr/local/bin/gitctx
+gitctx="python3 /path/to/gitctx.py"
 ```
 
 ---
@@ -66,7 +66,7 @@ gitctx init git@github.com:youruser/gitctx-config.git
 ### 2. Create Your First Profile from Current Git Config
 
 ```bash
-gitctx add-current personal
+gitctx profile add-current personal
 ```
 
 This copies your current `~/.gitconfig` into the `personal` profile and stores your name/email.
@@ -78,8 +78,8 @@ You will be prompted to set it as the active profile.
 ### 3. Add Dotfiles to the Profile
 
 ```bash
-gitctx add ~/.gitignore_global
-gitctx add ~/.ssh/config
+gitctx file add ~/.gitignore_global
+gitctx file add ~/.ssh/config
 ```
 
 These files will be copied and versioned inside the profile. Paths must be inside your home directory for portability.
@@ -89,7 +89,7 @@ These files will be copied and versioned inside the profile. Paths must be insid
 ### 4. Create a New Empty Profile
 
 ```bash
-gitctx add-new work --user-name "Jane Dev" --user-email jane@company.com
+gitctx profile add-new work --user-name "Jane Dev" --user-email jane@company.com
 ```
 
 This creates a clean Git config using the provided identity.
@@ -99,7 +99,7 @@ This creates a clean Git config using the provided identity.
 ### 5. List Profiles
 
 ```bash
-gitctx list
+gitctx profile list
 ```
 
 Shows all profiles, their status, creation time, and tracked files.
@@ -117,7 +117,7 @@ This applies the files in the `work` profile to your home directory and marks it
 To re-apply the current profile without switching:
 
 ```bash
-gitctx apply
+gitctx config apply
 ```
 
 ---
@@ -125,11 +125,11 @@ gitctx apply
 ### 7. Edit or Remove Files
 
 ```bash
-gitctx edit-file               # Interactive selection
-gitctx edit-file gitconfig     # Edit directly
+gitctx file edit               # Interactive selection
+gitctx file edit gitconfig     # Edit directly
 
-gitctx rm                      # Remove file interactively
-gitctx rm gitignore_global     # Remove specific file
+gitctx file rm                  # Remove file interactively
+gitctx file rm gitignore_global # Remove specific file
 ```
 
 ---
@@ -139,14 +139,14 @@ gitctx rm gitignore_global     # Remove specific file
 Push or pull your config repo changes:
 
 ```bash
-gitctx push
-gitctx pull
+gitctx config push
+gitctx config pull
 ```
 
 You can also inspect profile files:
 
 ```bash
-gitctx inspect personal
+gitctx profile inspect personal
 ```
 
 ---
@@ -155,18 +155,35 @@ gitctx inspect personal
 
 | Command           | Description                                             |
 | ----------------- | ------------------------------------------------------- |
-| `init`            | Initialize or clone a config repository                 |
-| `add-current`     | Create profile from your current Git config             |
-| `add-new`         | Create a new profile with provided name/email           |
-| `add`             | Add a file to a profile (uses active if none specified) |
-| `rm`              | Remove a file from a profile                            |
-| `edit-file`       | Edit a tracked file in a profile                        |
-| `remove`          | Delete an entire profile                                |
-| `list` / `status` | Show all profiles and their info                        |
-| `switch`          | Apply a profile and set it active                       |
-| `apply`           | Re-apply the current active profile                     |
-| `inspect`         | List all files in a given profile                       |
-| `push` / `pull`   | Push/pull config repo changes                           |
+| `init [repo_url]` | Initialize or clone a config repository (alias for config init                |
+| `status`          | Lists all profile and their status (alias for profile list) |
+| `switch`          | Apply a profile and set it active (alias for profile switch)                       |
+
+### Profile Management
+| Command           | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `profile add-current`     | Create profile from your current Git config             |
+| `profile add-new`         | Create a new profile with provided name/email           |
+| `profile edit`            | Delete an entire profile                                |
+| `profile list`            | Show all profiles and their info                        |
+| `profile remove`          | Delete an entire profile                                |
+| `profile inspect`         | List all files in a given profile                       |
+
+### File Management
+| Command           | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `file add`             | Add a file to a profile (uses active if none specified) |
+| `file edit`       | Edit a tracked file in a profile                        |
+| `file rm`              | Remove a file from a profile                            |
+
+### Configuration Management
+| Command           | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `config init [repo_url]` | Initialize or clone a config repository                 |
+| `config push`   | Push config repo changes                           |
+
+| `config pull`   | Pull config repo changes                           |
+| `config apply`           | Re-apply the current active profile                     |
 
 ---
 
