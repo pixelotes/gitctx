@@ -218,7 +218,54 @@ class GitCtx:
         
         self._commit_changes(f"Remove profile: {profile_name}")
         print(f"✅ Removed profile '{profile_name}'")
+        def print_status(self):
+            """Print the status of the gitctx repository."""
+            metadata = self._load_metadata()
+            profiles = metadata['profiles']
+            
+            if not profiles:
+                print("📝 No profiles found. Use 'gitctx add-new' or 'gitctx add-current' to create one.")
+                return
+            
+            # Print only the active profile if it exists
+            print("\n📋 Active profile:")
+            active = metadata.get('active_profile')
+            
+            for name, info in profiles.items():
+                status = "🟢 ACTIVE" if name == active else "⚪"
+                profile_type = info.get('type', 'unknown')
+                created = info.get('created_at', 'unknown')
+                
+                if name == active:
+                    print(f"  {status} {name} ({profile_type})")
+                    if 'user_name' in info:
+                        print(f"    👤 {info['user_name']} <{info['user_email']}>")
+                    print(f"    📅 Created: {created}")
+                    
+                    # List tracked files
+                    files = info.get('files', {})
+                    if files:
+                        print(f"    📁 Files: {', '.join(files.keys())}")
     
+            # Print number of profiles
+            print(f"\n📊 Total profiles: {len(profiles)}")
+    
+            # Print pending commits
+            try:
+                result = subprocess.run(
+                    ['git', 'rev-list', '--count', '@{u}..'],
+                    cwd=self.config_dir,
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+                pending = int(result.stdout.strip())
+                print()
+                print(f"⬆️  {pending} commits pending to push")
+                print()
+            except subprocess.CalledProcessError as e:
+                print("❌ Failed to count pending push commits")
+
     def list_profiles(self):
         """List all available profiles."""
         metadata = self._load_metadata()
@@ -773,7 +820,7 @@ def main():
             elif args.profile_command == 'switch':
                 gitctx.switch_profile(args.name)
         elif args.command == 'status':
-            gitctx.list_profiles()
+            gitctx.print_status()
         elif args.command == 'switch':
             gitctx.switch_profile(args.name)
         elif args.command == 'file':
