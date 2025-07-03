@@ -158,7 +158,7 @@ gitctx profile inspect personal
 | ------------------- | --------------------------------------------------------------- |
 | `init [repo_url]`   | Initialize or clone a config repository (alias for config init) |
 | `switch [profile]`  | Apply a profile and set it active (alias for profile switch)    |
-| `status`            | Lists all profile and their status (alias for profile list)     |
+| `status`            | Prints the active directory and some relevant stats             |
 
 ### Profile Management
 | Command                  | Description                                              |
