@@ -19,7 +19,7 @@ class GitCtx:
         self.profiles_dir = self.config_dir / 'profiles'
         self.repo_dir = self.config_dir
         self.metadata_file = self.config_dir / 'metadata.json'
-        
+
     def initialize_repo(self, repo_url: Optional[str] = None):
         """Initialize the gitctx configuration repository."""
         if self.config_dir.exists():
