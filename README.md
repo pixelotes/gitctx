@@ -165,8 +165,8 @@ gitctx profile inspect personal
 | ------------------------- | ------------------------------------------------------- |
 | `profile add-current`     | Create profile from your current Git config             |
 | `profile add-new`         | Create a new profile with provided name/email           |
-| `profile edit`            | Delete an entire profile                                |
-| `profile list`            | Show all profiles and their info                        |
+| `profile edit`            | Edit an existing profile                                |
+| `profile list`            | List all profiles with detals                           |
 | `profile remove`          | Delete an entire profile                                |
 | `profile switch`          | Apply a profile and set it active                       |
 | `profile inspect`         | List all files in a given profile                       |
