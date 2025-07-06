@@ -1,4 +1,4 @@
-# gitctx — Git Profile Manager
+# gitctx - Git Profile Manager
 
 **gitctx** is a lightweight CLI tool to manage multiple Git profiles and configurations across projects and machines. It lets you create and switch between named profiles, each with its own `.gitconfig` and tracked dotfiles, all versioned in a Git-backed repository stored under `~/.config/gitctx`.
 
