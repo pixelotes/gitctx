@@ -319,8 +319,18 @@ class GitCtx:
         files_copied = []
         home_path = Path.home()
         
-        for repo_filename, relative_path in profile_info.get('files', {}).items():
+        for repo_filename, file_info in profile_info.get('files', {}).items():
             source_file = profile_dir / repo_filename
+
+            # Handle both old format (string) and new format (dict)
+            if isinstance(file_info, str):
+                # Old format: direct path string
+                relative_path = file_info
+                file_permissions = None
+            else:
+                # New format: dict with path and permissions
+                relative_path = file_info.get('path')
+                file_permissions = file_info.get('permissions')
             
             # Handle both old absolute paths and new relative paths
             if relative_path.startswith('/'):
@@ -336,12 +346,22 @@ class GitCtx:
                 
                 # Copy file to destination
                 shutil.copy2(source_file, dest_file)
+
                 # Show original filename in output
                 original_filename = repo_filename[4:] if repo_filename.startswith('dot_') else repo_filename
                 files_copied.append(original_filename)
                 print(f"✅ Applied {original_filename} to {dest_file}")
+
+                # Apply stored permissions if available
+                if file_permissions:
+                    try:
+                        os.chmod(dest_file, int(file_permissions, 8))
+                        print(f"🔒 Applied permissions {file_permissions} to {dest_file}")
+                    except (ValueError, OSError) as e:
+                        print(f"⚠️  Failed to apply permissions {file_permissions} to {dest_file}: {e}")
         
         if files_copied:
+            print(f"-----")
             print(f"🔧 Applied files: {', '.join(files_copied)}")
         
         # Update active profile
@@ -382,13 +402,23 @@ class GitCtx:
             print("  (no files tracked)")
             return
         
-        # Display tracked files with their paths
+        # Display tracked files with their paths and permissions
         home_path = Path.home()
-        for repo_filename, stored_path in files.items():
+        for repo_filename, file_info in files.items():
             file_path = profile_dir / repo_filename
             # Show original filename in output
             display_filename = repo_filename[4:] if repo_filename.startswith('dot_') else repo_filename
             
+            # Handle both old format (string) and new format (dict)
+            if isinstance(file_info, str):
+                # Old format: direct path string
+                stored_path = file_info
+                file_permissions = None
+            else:
+                # New format: dict with path and permissions
+                stored_path = file_info.get('path')
+                file_permissions = file_info.get('permissions')
+
             # Handle both old absolute paths and new relative paths
             if stored_path.startswith('/'):
                 # Old absolute path
@@ -403,12 +433,16 @@ class GitCtx:
                 
                 print(f"  📄 {display_filename}")
                 print(f"    📁 Destination: {dest_display}")
+                if file_permissions:
+                    print(f"    🔒 Permissions: {file_permissions}")
                 print(f"    📊 {file_size:,} bytes")
                 print(f"    📅 {modified}")
                 print()
             else:
                 print(f"  ❌ {display_filename} (file missing)")
                 print(f"    📁 Destination: {dest_display}")
+                if file_permissions:
+                    print(f"    🔒 Permissions: {file_permissions}")
                 print()
 
     def edit_profile(self, profile_name: str = None):
@@ -519,20 +553,41 @@ class GitCtx:
         files_copied = []
         home_path = Path.home()
 
-        for repo_filename, relative_path in files.items():
+        for repo_filename, file_info in files.items():
             source_file = profile_dir / repo_filename
+
+            # Handle both old format (string) and new format (dict)
+            if isinstance(file_info, str):
+                # Old format: direct path string
+                relative_path = file_info
+                file_permissions = None
+            else:
+                # New format: dict with path and permissions
+                relative_path = file_info.get('path')
+                file_permissions = file_info.get('permissions')
+
             dest_file = home_path / relative_path
 
             if source_file.exists():
                 dest_file.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source_file, dest_file)
+ 
                 original_filename = repo_filename[4:] if repo_filename.startswith('dot_') else repo_filename
                 files_copied.append(original_filename)
                 print(f"✅ Applied {original_filename} to {dest_file}")
+
+                # Apply stored permissions if available
+                if file_permissions:
+                    try:
+                        os.chmod(dest_file, int(file_permissions, 8))
+                        print(f"🔒 Applied permissions {file_permissions} to {dest_file}")
+                    except (ValueError, OSError) as e:
+                        print(f"⚠️  Failed to apply permissions {file_permissions} to {dest_file}: {e}")
             else:
                 print(f"❌ Missing file in profile: {source_file}")
 
         if files_copied:
+            print(f"-----")
             print(f"🔁 Re-applied files: {', '.join(files_copied)}")
             self._commit_changes(f"Re-applied profile '{profile_name}'")
 
@@ -573,9 +628,26 @@ class GitCtx:
             print(f"   Home: {home_path}")
             return
         
+        # Get file permissions
+        file_stat = source_path.stat()
+        file_mode = oct(file_stat.st_mode)[-3:]  # Get last 3 digits (e.g., "600")
+
+        # Check for potentially unsafe permissions
+        mode_int = int(file_mode, 8)
+        if mode_int & 0o077:  # Check if group or others have any permissions
+            print(f"⚠️  File has potentially unsafe permissions: {file_mode}")
+            print(f"   File: {source_path}")
+            if source_path.suffix in ['.pem', '.key'] or 'ssh' in str(source_path):
+                print("   This appears to be a sensitive file (SSH key, certificate, etc.)")
+                confirm = input("   Continue adding this file? (y/N): ")
+                if confirm.lower() != 'y':
+                    print("❌ File addition cancelled")
+                    return
+
         # Copy file to profile directory
         profile_dir = self.profiles_dir / profile_name
         original_filename = source_path.name
+
         # Convert dotfiles to visible names in repo
         repo_filename = f"dot_{original_filename[1:]}" if original_filename.startswith('.') else original_filename
         dest_file = profile_dir / repo_filename
@@ -589,8 +661,10 @@ class GitCtx:
         relative_path_str = str(relative_path)
         existing_repo_filename = None
         
-        for existing_repo_file, existing_relative_path in profile_info['files'].items():
-            if existing_relative_path == relative_path_str:
+        for existing_repo_file, existing_file_info in profile_info['files'].items():
+        # Handle both old format (string) and new format (dict)
+            existing_path = existing_file_info if isinstance(existing_file_info, str) else existing_file_info.get('path')
+            if existing_path == relative_path_str:
                 existing_repo_filename = existing_repo_file
                 break
         
@@ -607,13 +681,17 @@ class GitCtx:
         # Copy the file
         shutil.copy2(source_path, dest_file)
 
-        # Store with new repo filename
-        profile_info['files'][repo_filename] = relative_path_str
+        # Store with new repo filename and permissions
+        profile_info['files'][repo_filename] = {
+            'path': relative_path_str,
+            'permissions': file_mode
+        }
         self._save_metadata(metadata)
 
         self._commit_changes(f"{action} file {original_filename} to profile {profile_name}")
         print(f"✅ {action} '{original_filename}' to profile '{profile_name}'")
         print(f"📁 File path: ~/{relative_path}")
+        print(f"🔒 Permissions: {file_mode}")
 
     def edit_file(self, file: Optional[str] = None, profile_name: Optional[str] = None):
         """Edit a file in a profile using $EDITOR (defaults to vim)."""
