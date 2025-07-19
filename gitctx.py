@@ -248,6 +248,23 @@ class GitCtx:
                 if files:
                     print(f"    📁 Files: {', '.join(files.keys())}")
 
+                # List hooks
+                pre_hooks = []
+                post_hooks = []
+                for f, props in files.items():
+                    hook = props.get("hook")
+                    if hook == "pre-apply":
+                        pre_hooks.append(f)
+                    elif hook == "post-apply":
+                        post_hooks.append(f)
+                
+                if pre_hooks:
+                    print(f"    🪝 pre-applys: {', '.join(pre_hooks)}")
+
+                if post_hooks:
+                    print(f"    🪝 post-applys: {', '.join(post_hooks)}")
+
+
         # Print number of profiles
         print(f"\n📊 Total profiles: {len(profiles)}")
 
@@ -314,6 +331,9 @@ class GitCtx:
         # Apply the profile
         profile_dir = self.profiles_dir / profile_name
         profile_info = metadata['profiles'][profile_name]
+
+        # Execute pre-apply hooks
+        self._execute_hooks(profile_name, 'pre-apply')        
         
         # Copy all tracked files to their destination paths
         files_copied = []
@@ -363,6 +383,9 @@ class GitCtx:
         if files_copied:
             print(f"-----")
             print(f"🔧 Applied files: {', '.join(files_copied)}")
+
+        # Execute post-apply hooks
+        self._execute_hooks(profile_name, 'post-apply')
         
         # Update active profile
         metadata['active_profile'] = profile_name
@@ -426,7 +449,10 @@ class GitCtx:
             else:
                 # New relative path
                 dest_display = f"~/{stored_path}"
-            
+
+            # Get hook info
+            file_hook = file_info.get('hook')
+
             if file_path.exists():
                 file_size = file_path.stat().st_size
                 modified = subprocess.check_output(['date', '-r', str(file_path)]).decode().strip()
@@ -437,6 +463,8 @@ class GitCtx:
                     print(f"    🔒 Permissions: {file_permissions}")
                 print(f"    📊 {file_size:,} bytes")
                 print(f"    📅 {modified}")
+                if file_hook:
+                    print(f"    🪝 Hook: {file_hook}")
                 print()
             else:
                 print(f"  ❌ {display_filename} (file missing)")
@@ -553,6 +581,9 @@ class GitCtx:
         files_copied = []
         home_path = Path.home()
 
+        # Execute post-apply hooks
+        self._execute_hooks(profile_name, 'pre-apply')
+
         for repo_filename, file_info in files.items():
             source_file = profile_dir / repo_filename
 
@@ -586,13 +617,16 @@ class GitCtx:
             else:
                 print(f"❌ Missing file in profile: {source_file}")
 
+        # Execute post-apply hooks
+        self._execute_hooks(profile_name, 'post-apply')
+
         if files_copied:
             print(f"-----")
             print(f"🔁 Re-applied files: {', '.join(files_copied)}")
             self._commit_changes(f"Re-applied profile '{profile_name}'")
 
 
-    def add_file(self, file_path: str, profile_name: str = None):
+    def add_file(self, file_path: str, profile_name: str = None, hook: str = None):
         """Add a file to a profile."""
         metadata = self._load_metadata()
         profiles = list(metadata['profiles'].keys())
@@ -618,6 +652,10 @@ class GitCtx:
             print(f"❌ File not found: {source_path}")
             return
         
+        if hook and hook not in ("pre-apply", "post-apply"):
+            print(f"❌ Invalid hook type: {hook}. Must be 'pre-apply' or 'post-apply'.")
+            sys.exit(1)
+
         # Check if file is within home directory
         home_path = Path.home().resolve()
         try:
@@ -662,7 +700,7 @@ class GitCtx:
         existing_repo_filename = None
         
         for existing_repo_file, existing_file_info in profile_info['files'].items():
-        # Handle both old format (string) and new format (dict)
+            # Handle both old format (string) and new format (dict)
             existing_path = existing_file_info if isinstance(existing_file_info, str) else existing_file_info.get('path')
             if existing_path == relative_path_str:
                 existing_repo_filename = existing_repo_file
@@ -678,20 +716,40 @@ class GitCtx:
         else:
             action = "Added"
 
+        # Validate hook type before processing
+        if hook:
+            # Make executable if it's a hook script and not already executable
+            if not (mode_int & 0o100):  # Not executable
+                print(f"⚠️  Making script executable (adding +x permission)")
+                new_mode = file_stat.st_mode | 0o100
+                os.chmod(source_path, new_mode)
+                # Update file_mode to reflect the new permissions
+                file_mode = oct(os.stat(source_path).st_mode)[-3:]
+
         # Copy the file
         shutil.copy2(source_path, dest_file)
 
-        # Store with new repo filename and permissions
-        profile_info['files'][repo_filename] = {
+        # Create file info dict
+        file_info = {
             'path': relative_path_str,
             'permissions': file_mode
         }
+        
+        # Add hook info if specified
+        if hook:
+            file_info['hook'] = hook
+        
+        # Store with new repo filename and permissions
+        profile_info['files'][repo_filename] = file_info
+        
         self._save_metadata(metadata)
 
         self._commit_changes(f"{action} file {original_filename} to profile {profile_name}")
         print(f"✅ {action} '{original_filename}' to profile '{profile_name}'")
         print(f"📁 File path: ~/{relative_path}")
         print(f"🔒 Permissions: {file_mode}")
+        if hook:
+            print(f"🔧 Hook type: {hook}")
 
     def edit_file(self, file: Optional[str] = None, profile_name: Optional[str] = None):
         """Edit a file in a profile using $EDITOR (defaults to vim)."""
@@ -786,6 +844,38 @@ class GitCtx:
         except subprocess.CalledProcessError:
             print("❌ Failed to pull changes")
 
+
+    def _execute_hooks(self, profile_name: str, hook_type: str):
+        """Execute hooks of specified type for a profile."""
+        metadata = self._load_metadata()
+        profile_info = metadata['profiles'][profile_name]
+        
+        hooks_executed = []
+        for repo_filename, file_info in profile_info.get('files', {}).items():
+            if isinstance(file_info, dict) and file_info.get('hook') == hook_type:
+                # Get the actual file path
+                relative_path = file_info.get('path')
+                script_path = Path.home() / relative_path
+                
+                if script_path.exists() and os.access(script_path, os.X_OK):
+                    try:
+                        print(f"-----")
+                        print(f"🔧 Running {hook_type} hook: {script_path.name}")
+                        result = subprocess.run([str(script_path)], 
+                                            cwd=Path.home(), 
+                                            check=True, 
+                                            capture_output=True)  # Let output show
+                        hooks_executed.append(script_path.name)
+                    except subprocess.CalledProcessError as e:
+                        print(f"❌ Hook failed: {script_path.name} (exit code {e.returncode})")
+                    except Exception as e:
+                        print(f"❌ Hook error: {script_path.name} - {e}")
+                else:
+                    print(f"⚠️  Hook script not executable or missing: {script_path}")
+        
+        if hooks_executed:
+            print(f"✅ Executed {hook_type} hooks: {', '.join(hooks_executed)}\n-----")
+
 def main():
     parser = argparse.ArgumentParser(description='gitctx - Git Profile Manager')
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
@@ -843,6 +933,7 @@ def main():
     add_file = file_subparsers.add_parser('add', help='Add a file to a profile')
     add_file.add_argument('file', help='Path to file to add')
     add_file.add_argument('--profile', help='Profile name (defaults to active profile)')
+    add_file.add_argument("--hook", nargs="?", const=True, help="Set the hook type (pre-apply or post-apply)")
 
     # Edit file in profile
     edit_file = file_subparsers.add_parser('edit', help='Edit a file in a profile')
@@ -907,7 +998,7 @@ def main():
                 file_parser.print_help()
                 return
             if args.file_command == 'add':
-                gitctx.add_file(args.file, args.profile)
+                gitctx.add_file(args.file, args.profile, args.hook)
             elif args.file_command == 'edit':
                 gitctx.edit_file(args.file, args.profile)
             elif args.file_command == 'rm':
