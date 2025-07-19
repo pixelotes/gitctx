@@ -12,6 +12,8 @@ Inspired by tools like [`chezmoi`](https://www.chezmoi.io/) and `git`'s own flex
 * Keep each profile's `.gitconfig` and tracked dotfiles versioned
 * Easily switch between profiles (work, personal, etc.)
 * Add and remove files to/from profiles
+* Hook support: run custom scripts before or after switching profiles
+* Skip hook execution with `--no-hooks`
 * Safe: profiles are never auto-applied unless explicitly invoked
 * Clone and sync your profile repo from Git remotes
 * Optional interactive selection via `fzf`
@@ -75,14 +77,19 @@ You will be prompted to set it as the active profile.
 
 ---
 
-### 3. Add Dotfiles to the Profile
+### 3. Add Dotfiles or Hook Scripts to the Profile
 
 ```bash
+# Add regular files
 gitctx file add ~/.gitignore_global
 gitctx file add ~/.ssh/config
+
+# Add pre-apply or post-apply hooks (must be executable)
+gitctx file add ~/scripts/pre.sh --hook pre-apply
+gitctx file add ~/scripts/post.sh --hook post-apply
 ```
 
-These files will be copied and versioned inside the profile. Paths must be inside your home directory for portability.
+Hook scripts will be executed automatically when switching or applying a profile.
 
 ---
 
@@ -114,10 +121,17 @@ gitctx switch work
 
 This applies the files in the `work` profile to your home directory and marks it as active.
 
-To re-apply the current profile without switching:
+To re-apply the current profile:
 
 ```bash
 gitctx config apply
+```
+
+To skip execution of pre/post hooks during switch or apply:
+
+```bash
+gitctx switch work --no-hooks
+gitctx config apply --no-hooks
 ```
 
 ---
@@ -154,37 +168,66 @@ gitctx profile inspect personal
 ## Commands Overview
 
 ### Quick commands
-| Command             | Description                                                     |
-| ------------------- | --------------------------------------------------------------- |
-| `init [repo_url]`   | Initialize or clone a config repository (alias for config init) |
-| `switch [profile]`  | Apply a profile and set it active (alias for profile switch)    |
-| `status`            | Prints the active directory and some relevant stats             |
+
+| Command            | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `init [repo_url]`  | Initialize or clone a config repository (alias for config init) |
+| `switch [profile]` | Apply a profile and set it active (alias for profile switch)    |
+| `status`           | Prints the active directory and some relevant stats             |
 
 ### Profile Management
-| Command                  | Description                                              |
-| ------------------------- | ------------------------------------------------------- |
-| `profile add-current`     | Create profile from your current Git config             |
-| `profile add-new`         | Create a new profile with provided name/email           |
-| `profile edit`            | Edit an existing profile                                |
-| `profile list`            | List all profiles with detals                           |
-| `profile remove`          | Delete an entire profile                                |
-| `profile switch`          | Apply a profile and set it active                       |
-| `profile inspect`         | List all files in a given profile                       |
+
+| Command               | Description                                   |
+| --------------------- | --------------------------------------------- |
+| `profile add-current` | Create profile from your current Git config   |
+| `profile add-new`     | Create a new profile with provided name/email |
+| `profile edit`        | Edit an existing profile                      |
+| `profile list`        | List all profiles with details                |
+| `profile remove`      | Delete an entire profile                      |
+| `profile switch`      | Apply a profile and set it active             |
+| `profile inspect`     | List all files in a given profile             |
 
 ### File Management
-| Command           | Description                                                  |
-| ----------------- | ------------------------------------------------------------ |
-| `file add`        | Add a file to a profile (uses active if none specified)      |
-| `file edit`       | Edit a tracked file in a profile                             |
-| `file rm`         | Remove a file from a profile                                 |
+
+| Command                       | Description                                                    |
+| ----------------------------- | -------------------------------------------------------------- |
+| `file add [path]`             | Add a file to a profile (uses active if none specified)        |
+| `--hook pre-apply/post-apply` | Tag the added file as a pre- or post-hook (must be executable) |
+| `file edit`                   | Edit a tracked file in a profile                               |
+| `file rm`                     | Remove a file from a profile                                   |
 
 ### Configuration Management
-| Command                  | Description                                      |
-| ------------------------ | ------------------------------------------------ |
-| `config init [repo_url]` | Initialize or clone a config repository          |
-| `config push`            | Push config repo changes                         |
-| `config pull`            | Pull config repo changes                         |
-| `config apply`           | Re-apply the current active profile              |
+
+| Command                  | Description                             |
+| ------------------------ | --------------------------------------- |
+| `config init [repo_url]` | Initialize or clone a config repository |
+| `config push`            | Push config repo changes                |
+| `config pull`            | Pull config repo changes                |
+| `config apply`           | Re-apply the current active profile     |
+| `--no-hooks`             | Skip execution of pre/post hook scripts |
+
+---
+
+## Hook Support
+
+You can attach executable scripts as pre- or post-apply hooks for a profile:
+
+```bash
+gitctx file add ~/scripts/pre-check.sh --hook pre-apply
+gitctx file add ~/scripts/post-fix.sh --hook post-apply
+```
+
+When switching or applying a profile, `gitctx` will:
+
+* Execute all `pre-apply` scripts **before** applying files
+* Execute all `post-apply` scripts **after** applying files
+
+To **skip all hook execution**, use the `--no-hooks` flag:
+
+```bash
+gitctx profile switch personal --no-hooks
+gitctx config apply --no-hooks
+```
 
 ---
 
@@ -192,6 +235,7 @@ gitctx profile inspect personal
 
 * `gitctx` **never auto-applies** a profile when cloning.
 * It will **not overwrite** your home files unless you explicitly run `switch` or `apply`.
+* Hook scripts must be executable or they will be rejected on addition.
 * All profile data lives under `~/.config/gitctx`.
 
 ---
