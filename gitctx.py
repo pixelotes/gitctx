@@ -92,7 +92,7 @@ class GitCtx:
                          cwd=self.config_dir, check=True, capture_output=True)
             print(f"✅ Committed: {message}")
         except subprocess.CalledProcessError:
-            print("ℹ️  No changes to commit")
+            print("ℹ️ No changes to commit")
     
     def _get_fzf_selection(self, options: List[str], prompt: str = "Select profile") -> Optional[str]:
         """Use fzf for selection if available, otherwise use simple input."""
@@ -312,7 +312,8 @@ class GitCtx:
                 print(f"    📁 Files: {', '.join(files.keys())}")
         print()
     
-    def switch_profile(self, profile_name: str = None):
+    def switch_profile(self, profile_name: str = None, no_hooks = False):
+
         """Switch to a different profile."""
         metadata = self._load_metadata()
         profiles = list(metadata['profiles'].keys())
@@ -333,7 +334,12 @@ class GitCtx:
         profile_info = metadata['profiles'][profile_name]
 
         # Execute pre-apply hooks
-        self._execute_hooks(profile_name, 'pre-apply')        
+        if not no_hooks:
+            self._execute_hooks(profile_name, 'pre-apply')
+        else:
+            print(f"-----")
+            print(f"⏩ Skipping pre-hooks execution...")
+            print(f"-----")        
         
         # Copy all tracked files to their destination paths
         files_copied = []
@@ -385,7 +391,12 @@ class GitCtx:
             print(f"🔧 Applied files: {', '.join(files_copied)}")
 
         # Execute post-apply hooks
-        self._execute_hooks(profile_name, 'post-apply')
+        if not no_hooks:
+            self._execute_hooks(profile_name, 'post-apply')
+        else:
+            print(f"-----")
+            print(f"⏩ Skipping post-hooks execution...")
+            print(f"-----")
         
         # Update active profile
         metadata['active_profile'] = profile_name
@@ -558,10 +569,11 @@ class GitCtx:
             self._commit_changes(f"Set active profile: {profile_name}")
             print(f"🔄 Set '{profile_name}' as active profile")
 
-    def apply_active_profile(self):
+    def apply_active_profile(self, no_hooks = False):
         """Re-apply the active profile's files."""
         metadata = self._load_metadata()
         profile_name = metadata.get('active_profile')
+
 
         if not profile_name:
             print("❌ No active profile set. Use 'gitctx switch' to set one.")
@@ -581,8 +593,13 @@ class GitCtx:
         files_copied = []
         home_path = Path.home()
 
-        # Execute post-apply hooks
-        self._execute_hooks(profile_name, 'pre-apply')
+        # Execute pre-apply hooks
+        if not no_hooks:
+            self._execute_hooks(profile_name, 'pre-apply')
+        else:
+            print(f"-----")
+            print(f"⏩ Skipping pre-hooks execution...")  
+            print(f"-----") 
 
         for repo_filename, file_info in files.items():
             source_file = profile_dir / repo_filename
@@ -618,7 +635,11 @@ class GitCtx:
                 print(f"❌ Missing file in profile: {source_file}")
 
         # Execute post-apply hooks
-        self._execute_hooks(profile_name, 'post-apply')
+        if not no_hooks:
+            self._execute_hooks(profile_name, 'post-apply')
+        else:
+            print(f"-----")
+            print(f"⏩ Skipping post-hooks execution...")  
 
         if files_copied:
             print(f"-----")
@@ -887,6 +908,8 @@ def main():
     # Switch profile
     switch_parser = subparsers.add_parser('switch', help='Switch to a profile (alias)')
     switch_parser.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
+    switch_parser.add_argument("--no-hooks", action='store_true', required=False, help="Skip applying hooks")
+
 
     # Status
     status_parser = subparsers.add_parser('status', help='List all profiles (alias)')
@@ -907,11 +930,12 @@ def main():
 
     # List profiles
     profile_subparsers.add_parser('list', help='List all profiles')
-
     
     # Switch profile
     switch = profile_subparsers.add_parser('switch', help='Switch to a profile')
     switch.add_argument('name', nargs='?', help='Profile name (optional, will prompt if not provided)')
+    switch.add_argument("--no-hooks", action='store_true', required=False, help="Skip applying hooks")
+
     
     # List profile files
     inspect = profile_subparsers.add_parser('inspect', help='List all files in a profile')
@@ -958,8 +982,9 @@ def main():
     config_subparsers.add_parser('pull', help='Pull latest changes in gitctx repository')
     
     # Apply profile configuration
-    config_subparsers.add_parser('apply', help='Re-apply files from the current active profile')
-    
+    apply_parser = config_subparsers.add_parser('apply', help='Re-apply files from the current active profile')
+    apply_parser.add_argument("--no-hooks", action='store_true', required=False, help="Skip applying hooks")
+
     args = parser.parse_args()
     
     if not args.command:
@@ -988,11 +1013,11 @@ def main():
             elif args.profile_command == 'inspect':
                 gitctx.list_profile_files(args.name)
             elif args.profile_command == 'switch':
-                gitctx.switch_profile(args.name)
+                gitctx.switch_profile(args.name, args.no_hooks)
         elif args.command == 'status':
             gitctx.print_status()
         elif args.command == 'switch':
-            gitctx.switch_profile(args.name)
+            gitctx.switch_profile(args.name, args.no_hooks)
         elif args.command == 'file':
             if not args.file_command:
                 file_parser.print_help()
@@ -1014,7 +1039,7 @@ def main():
             elif args.config_command == 'pull':
                 gitctx.pull_repo()
             elif args.config_command == 'apply':
-                gitctx.apply_active_profile()
+                gitctx.apply_active_profile(args.no_hooks)
     except KeyboardInterrupt:
         print("\n❌ Operation cancelled")
         sys.exit(1)
